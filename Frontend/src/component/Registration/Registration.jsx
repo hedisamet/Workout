@@ -40,7 +40,7 @@ function Registration() {
       return;
     }
 
-    Axios.post('http://localhost:3001/api/account/register', {
+    Axios.post('http://localhost:3000/api/account/register', {
       username,
       dob,
       email,

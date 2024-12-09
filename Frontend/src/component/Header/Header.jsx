@@ -19,7 +19,7 @@ const Header = () => {
         if (userId) {
           try {
             console.log('Fetching user data for ID:', userId);
-            const response = await axios.get(`http://localhost:3001/api/account/${userId}`);
+            const response = await axios.get(`http://localhost:3000/api/account/${userId}`);
             console.log('User data response:', response.data);
             
             if (response.data.status === 'success' && response.data.data) {

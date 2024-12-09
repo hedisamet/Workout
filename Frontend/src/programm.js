@@ -19,7 +19,7 @@ const Program = () => {
         setLoading(true);
         setError(null);
         console.log('Fetching program for:', email);
-        const response = await axios.get(`http://localhost:3001/api/program/${encodeURIComponent(email)}`);
+        const response = await axios.get(`http://localhost:3000/api/program/${encodeURIComponent(email)}`);
         console.log('Program data:', response.data);
         setWorkoutProgram(response.data);
       } catch (err) {

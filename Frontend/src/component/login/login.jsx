@@ -20,7 +20,7 @@ function Login() {
     console.log("Attempting login with email:", cleanEmail);
     
     axios
-      .post("http://localhost:3001/api/account/login", { 
+      .post("http://localhost:3000/api/account/login", { 
         email: cleanEmail, 
         password: cleanPassword 
       })

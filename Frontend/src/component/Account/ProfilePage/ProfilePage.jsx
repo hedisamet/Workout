@@ -36,7 +36,7 @@ const ProfilePage = () => {
       try {
         console.log('Fetching profile data for ID:', id);
         
-        const response = await Axios.get(`http://localhost:3001/api/account/${id}`);
+        const response = await Axios.get(`http://localhost:3000/api/account/${id}`);
         console.log('Profile response:', response.data);
         
         if (response.data.status === 'success' && response.data.data) {
@@ -61,6 +61,7 @@ const ProfilePage = () => {
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        setError(error.message);
         if (error.response) {
           console.error('Error response:', error.response.data);
         } else if (error.request) {
@@ -105,7 +106,7 @@ const ProfilePage = () => {
       console.log('Submitting update for ID:', id);
       console.log('Update data:', editedData);
 
-      const response = await Axios.post(`http://localhost:3001/api/account/update/${id}`, {
+      const response = await Axios.post(`http://localhost:3000/api/account/update/${id}`, {
         height: parseInt(editedData.height) || 0,
         weight: parseInt(editedData.weight) || 0,
         numberOfSession: parseInt(editedData.sessionsPerWeek) || 0,
@@ -141,6 +142,7 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      setError(error.message);
       if (error.response) {
         console.error('Server error response:', error.response.data);
       }

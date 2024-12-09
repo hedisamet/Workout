@@ -13,7 +13,7 @@ const Header = () => {
     if (userId) {
       console.log('Header - Fetching user data for ID:', userId);
 
-      axios.get(`http://localhost:3001/api/account/${userId}`)
+      axios.get(`http://localhost:3000/api/account/${userId}`)
         .then(response => {
           console.log('Header - User data response:', response.data);
           if (response.data.status === 'success' && response.data.data) {

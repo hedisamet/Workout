@@ -1,107 +1,137 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../../../config/api';
 import './Meals.css';
-import Loader from '../../shared/Loader/Loader';
 
 const Meals = () => {
   const [mealPlan, setMealPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [totalCalories, setTotalCalories] = useState(0);
+  const [generating, setGenerating] = useState(false);
+
+  const fetchMealPlan = async (userId) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.MEAL.GET_PLAN(userId));
+      if (response.data.status === 'success' && response.data.plan) {
+        setMealPlan(response.data.plan);
+      } else {
+        console.log('No meal plan found');
+        setMealPlan(null);
+      }
+    } catch (error) {
+      console.error('Error fetching meal plan:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateNewMeal = async () => {
+    try {
+      setGenerating(true);
+      setError(null);
+      
+      const userData = {
+        user_id: localStorage.getItem('userId'),
+        weight: localStorage.getItem('weight') || '70',
+        height: localStorage.getItem('height') || '170',
+        goal: localStorage.getItem('goal') || 'Health and Fitness'
+      };
+
+      const response = await axios.post(API_ENDPOINTS.MEAL.GENERATE, userData);
+      
+      if (response.data.status === 'success') {
+        setMealPlan(response.data.data);
+        // No need to fetch again since we have the data
+      } else {
+        throw new Error(response.data.message || 'Failed to generate meal plan');
+      }
+    } catch (error) {
+      console.error('Error generating meal plan:', error);
+      setError(error.message);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMealPlan = async () => {
-      try {
-        setLoading(true);
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          setError('User not found');
-          setLoading(false);
-          return;
-        }
-
-        console.log('Fetching meal plan for user:', userId);
-        const response = await axios.get(`http://localhost:3001/api/meals/${userId}`);
-        console.log('Meal plan response:', response.data);
-
-        if (response.data && response.data.status === 'success' && response.data.data) {
-          const mealPlanData = response.data.data;
-          setMealPlan(mealPlanData);
-          
-          // Calculate total calories
-          if (mealPlanData.meals && mealPlanData.meals.length > 0) {
-            const total = mealPlanData.meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-            setTotalCalories(total);
-          }
-        } else {
-          setError('No meal plan found');
-        }
-      } catch (error) {
-        console.error('Error fetching meal plan:', error);
-        setError('Failed to load meal plan');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMealPlan();
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      setError('User not found');
+      setLoading(false);
+      return;
+    }
+    fetchMealPlan(userId);
   }, []);
 
-  if (loading) {
-    return <Loader />;
-  }
+  const renderMealPlanTable = () => {
+    if (!mealPlan || !mealPlan.dailyMeals || mealPlan.dailyMeals.length === 0) {
+      return (
+        <div className="no-meal-plan">
+          <p>No meal plan available. Click 'Generate New Meal Plan' to create one.</p>
+        </div>
+      );
+    }
 
-  if (error) {
     return (
-      <div className="meals-container">
-        <div className="error">{error}</div>
+      <div className="meal-plan-container">
+        {mealPlan.dailyMeals.map((day) => (
+          <div key={day.dayName} className="day-section">
+            <div className="day-header">
+              <h3>{day.dayName}</h3>
+              <div className="total-calories">
+                Total: {day.totalDailyCalories} kcal
+              </div>
+            </div>
+            <div className="meals-grid">
+              {day.meals.map((meal) => (
+                <div key={`${day.dayName}-${meal.mealType}`} className="meal-card">
+                  <div className="meal-header">
+                    <h4>{meal.mealType}</h4>
+                    <span className="meal-time">{meal.timeSlot}</span>
+                  </div>
+                  <div className="meal-content">
+                    <div className="food-items">
+                      <div className="food-item">{meal.food}</div>
+                    </div>
+                    <div className="meal-stats">
+                      <div className="macros">
+                        <span className="label">Protein:</span>
+                        <span className="value">{meal.protein}g</span>
+                        <span className="label">Carbs:</span>
+                        <span className="value">{meal.carbs}g</span>
+                        <span className="label">Fats:</span>
+                        <span className="value">{meal.fats}g</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
-  }
-
-  if (!mealPlan || !mealPlan.meals || mealPlan.meals.length === 0) {
-    return (
-      <div className="meals-container">
-        <h2>Daily Meal Plan</h2>
-        <p>No meal plan found. Please create a meal plan.</p>
-      </div>
-    );
-  }
+  };
 
   return (
     <div className="meals-container">
-      <h2>Daily Meal Plan</h2>
-      <div className="meals-table-container">
-        <table className="meals-table">
-          <thead>
-            <tr>
-              <th>Meal</th>
-              <th>Time</th>
-              <th>Food Items</th>
-              <th>Calories</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mealPlan.meals.map((meal, index) => (
-              <tr key={index}>
-                <td>{meal.name}</td>
-                <td>{meal.time}</td>
-                <td>{meal.foods.join(', ')}</td>
-                <td>{meal.calories} kcal</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan="3" className="total-calories">Total Daily Calories</td>
-              <td className="total-calories-value">{totalCalories} kcal</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <div className="button-container">
-        <button className="generate-meal-btn">Generate new meal</button>
-      </div>
+      <h1>Weekly Meal Plan</h1>
+      <button 
+        className="generate-button"
+        onClick={generateNewMeal}
+        disabled={generating}
+      >
+        {generating ? 'Generating...' : 'Generate new meal'}
+      </button>
+      
+      {error && <div className="error-message">{error}</div>}
+      {loading ? (
+        <div className="loading">Loading meal plan...</div>
+      ) : (
+        renderMealPlanTable()
+      )}
     </div>
   );
 };
