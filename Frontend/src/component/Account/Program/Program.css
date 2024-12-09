@@ -1,0 +1,111 @@
+.program-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+.program-container h2 {
+  text-align: center;
+  color: #ff9933;
+  margin-bottom: 1rem;
+  font-size: 2.5rem;
+}
+
+.week-range {
+  text-align: center;
+  color: #888;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.program-table-container {
+  overflow-x: auto;
+  margin-top: 2rem;
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.program-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: transparent;
+}
+
+.program-table th,
+.program-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.program-table th {
+  background-color: #333;
+  color: #ff9933;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.program-table tbody tr:hover {
+  background-color: #333;
+}
+
+.program-table td {
+  color: #fff;
+}
+
+.total-calories {
+  text-align: right !important;
+  font-weight: bold;
+  color: #ff9933 !important;
+  font-size: 1.1em;
+}
+
+.total-calories-value {
+  color: #ff9933 !important;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.program-table tfoot tr {
+  background-color: #2a2a2a;
+  border-top: 2px solid #ff9933;
+}
+
+.program-table tfoot td {
+  border-bottom: none;
+  padding-top: 1.5rem;
+}
+
+.loading, .error, .empty {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.error {
+  color: #ff4444;
+}
+
+@media (max-width: 768px) {
+  .program-container {
+    padding: 1rem;
+  }
+  
+  .program-table th,
+  .program-table td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .program-container h2 {
+    font-size: 2rem;
+  }
+  
+  .week-range {
+    font-size: 1rem;
+  }
+}

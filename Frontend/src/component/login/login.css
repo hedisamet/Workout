@@ -1,0 +1,86 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.container {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* Increased shadow */
+  max-width: 360px;
+  padding: 30px;
+  background-color: white;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+h2 {
+  color: #f2760c;
+  text-align: center;
+  margin-bottom: 20px; /* Added some space below the heading */
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Increased space between form fields */
+}
+
+label {
+  color: #f2760c;
+  font-size: 16px; /* Slightly larger font size for labels */
+}
+
+.input {
+  width: 200px; /* Increased width for text boxes */
+  padding: 12px; /* Adjusted padding for text boxes */
+  font-size: 18px; /* Increased font size for text boxes */
+  border: 2px solid #cd670e;
+  border-radius: 6px; /* Slightly rounded corners */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Added shadow to text boxes */
+}
+
+label {
+  color: #f2760c;
+  font-size: 18px; /* Increased font size for labels */
+}
+
+button {
+  background-color: #f2760c;
+  color: white;
+  padding: 20px 20px; /* Increased padding for button */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: #2f31a9;
+}
+
+button:hover {
+  background-color: #e65a00; /* Slightly darker color on hover */
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px; /* Added some space above the button container */
+}
+
+.ss {
+  color: #f2760c;
+}

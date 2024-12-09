@@ -1,0 +1,37 @@
+.Footer-container {
+    position: relative;
+    border: none;
+}
+
+.footer {
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+    align-items: center;
+    justify-content: center;
+    height: 20rem;
+    border: none;
+}
+
+.Logo-f>img {
+    width: 15rem;
+    filter: brightness(0) invert(1);
+}
+
+.blur-f1 {
+    bottom: 0;
+    left: 15%;
+    width: 26rem;
+    height: 12rem;
+    filter: blur(150px);
+}
+
+.blur-f {
+    bottom: 0;
+    right: 15%;
+    width: 26rem;
+    height: 12rem;
+    filter: blur(200px);
+    background: red;
+}

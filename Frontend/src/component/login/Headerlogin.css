@@ -1,0 +1,22 @@
+.btn-link {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: inherit; /* Utiliser la couleur du texte par défaut */
+    background-color: #ffffff; /* Couleur de fond du bouton */
+    border: 2px solid #000000; /* Bordure du bouton */
+    border-radius: 5px; /* Coins arrondis */
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, border 0.3s ease;
+  }
+  
+  .btn-link:hover {
+    background-color: #000000; /* Couleur de fond du bouton au survol */
+    color: #ffffff; /* Couleur du texte au survol */
+    border: 2px solid #ffffff; /* Bordure du bouton au survol */
+  }
+.ssi{
+    top: 2rem;
+    margin-top: 10px;
+    
+}  

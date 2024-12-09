@@ -1,0 +1,90 @@
+.meals-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+.meals-container h2 {
+  text-align: center;
+  color: #ff9933;
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+}
+
+.meals-table-container {
+  overflow-x: auto;
+  margin-top: 2rem;
+  background: #2a2a2a;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.meals-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: transparent;
+}
+
+.meals-table th,
+.meals-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.meals-table th {
+  background-color: #333;
+  color: #ff9933;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.meals-table tr:hover {
+  background-color: #333;
+}
+
+.meals-table td {
+  color: #fff;
+}
+
+.total-calories {
+  text-align: right !important;
+  font-weight: bold;
+  color: #ff9933 !important;
+  font-size: 1.1em;
+}
+
+.total-calories-value {
+  color: #ff9933 !important;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.meals-table tfoot tr {
+  background-color: #2a2a2a;
+  border-top: 2px solid #ff9933;
+}
+
+.meals-table tfoot td {
+  border-bottom: none;
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .meals-container {
+    padding: 1rem;
+  }
+  
+  .meals-table th,
+  .meals-table td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .meals-container h2 {
+    font-size: 2rem;
+  }
+}
