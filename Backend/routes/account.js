@@ -124,42 +124,60 @@ router.get('/:userId', async (req, res) => {
 router.post('/update/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const updateData = req.body;
+    const { height, weight, numberOfSession, objectif } = req.body;
     
-    // If password is being updated, hash it
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
-    
-    const user = await User.findByIdAndUpdate(
+    console.log('Updating user profile for ID:', userId);
+    console.log('Update data:', req.body);
+
+    // Find user and update
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
-      updateData,
-      { new: true }
+      { 
+        $set: {
+          height: parseInt(height),
+          weight: parseInt(weight),
+          numberOfSession: parseInt(numberOfSession),
+          objectif: objectif
+        }
+      },
+      { new: true } // This ensures we get the updated document back
     );
 
-    if (!user) {
-      return res.status(404).json({ status: 'error', message: 'User not found' });
+    if (!updatedUser) {
+      console.log('No user found for ID:', userId);
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
     }
 
     // Don't send password back to client
     const userWithoutPassword = {
-      _id: user._id,
-      email: user.email,
-      username: user.username,
-      dob: user.dob,
-      height: user.height,
-      weight: user.weight,
-      numberOfSession: user.numberOfSession,
-      objectif: user.objectif,
-      sexe: user.sexe,
-      assignedProgram: user.assignedProgram,
-      assignedMealPlan: user.assignedMealPlan
+      _id: updatedUser._id,
+      email: updatedUser.email,
+      username: updatedUser.username,
+      dob: updatedUser.dob,
+      height: updatedUser.height,
+      weight: updatedUser.weight,
+      numberOfSession: updatedUser.numberOfSession,
+      objectif: updatedUser.objectif,
+      sexe: updatedUser.sexe
     };
 
-    res.json({ status: 'success', data: userWithoutPassword });
+    console.log('Profile updated successfully for user:', userId);
+    console.log('Updated user data:', userWithoutPassword);
+    
+    res.json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: userWithoutPassword
+    });
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ status: 'error', message: 'Internal server error' });
+    console.error('Error updating profile:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update profile'
+    });
   }
 });
 

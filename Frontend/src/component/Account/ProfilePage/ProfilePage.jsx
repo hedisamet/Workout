@@ -6,7 +6,6 @@ import { useParams } from 'react-router-dom';
 import Loader from '../../shared/Loader/Loader';
 
 const ProfilePage = () => {
-
   const { id } = useParams();
   const [data, setData] = useState({
     name: '',
@@ -35,9 +34,7 @@ const ProfilePage = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        
         console.log('Fetching profile data for ID:', id);
-        
         
         const response = await Axios.get(`http://localhost:3001/api/account/${id}`);
         console.log('Profile response:', response.data);
@@ -108,8 +105,7 @@ const ProfilePage = () => {
       console.log('Submitting update for ID:', id);
       console.log('Update data:', editedData);
 
-      const response = await Axios.post(`http://localhost:3001/api/account/update`, {
-        id: id,
+      const response = await Axios.post(`http://localhost:3001/api/account/update/${id}`, {
         height: parseInt(editedData.height) || 0,
         weight: parseInt(editedData.weight) || 0,
         numberOfSession: parseInt(editedData.sessionsPerWeek) || 0,
@@ -119,40 +115,27 @@ const ProfilePage = () => {
       console.log('Update response:', response.data);
 
       if (response.data.status === 'success') {
+        const userData = response.data.data;
         // Update local state
-        setData(prevData => ({
-          ...prevData,
-          height: parseInt(editedData.height) || 0,
-          weight: parseInt(editedData.weight) || 0,
-          sessionsPerWeek: parseInt(editedData.sessionsPerWeek) || 0,
-          fitnessGoal: editedData.fitnessGoal
-        }));
+        setData({
+          name: userData.username || '',
+          age: userData.dob ? calculateAge(userData.dob) : '',
+          gender: userData.sexe || '',
+          height: userData.height || '',
+          weight: userData.weight || '',
+          sessionsPerWeek: userData.numberOfSession || '',
+          fitnessGoal: userData.objectif || ''
+        });
+
+        setEditedData({
+          height: userData.height || '',
+          weight: userData.weight || '',
+          sessionsPerWeek: userData.numberOfSession || '',
+          fitnessGoal: userData.objectif || ''
+        });
 
         setIsEditing(false);
         alert('Profile updated successfully!');
-        
-        // Refresh data from server
-        const refreshResponse = await Axios.get(`http://localhost:3001/api/account/${id}`);
-        console.log('Refresh response:', refreshResponse.data);
-        
-        if (refreshResponse.data) {
-          const userData = {
-            name: refreshResponse.data.username || '',
-            age: refreshResponse.data.dob ? calculateAge(refreshResponse.data.dob) : '',
-            gender: refreshResponse.data.sexe || '',
-            height: refreshResponse.data.height || '',
-            weight: refreshResponse.data.weight || '',
-            sessionsPerWeek: refreshResponse.data.numberOfSession || '',
-            fitnessGoal: refreshResponse.data.objectif || ''
-          };
-          setData(userData);
-          setEditedData({
-            height: refreshResponse.data.height || '',
-            weight: refreshResponse.data.weight || '',
-            sessionsPerWeek: refreshResponse.data.numberOfSession || '',
-            fitnessGoal: refreshResponse.data.objectif || ''
-          });
-        }
       } else {
         alert('Failed to update profile. Please try again.');
       }

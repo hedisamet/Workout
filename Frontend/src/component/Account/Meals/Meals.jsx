@@ -99,6 +99,9 @@ const Meals = () => {
           </tfoot>
         </table>
       </div>
+      <div className="button-container">
+        <button className="generate-meal-btn">Generate new meal</button>
+      </div>
     </div>
   );
 };

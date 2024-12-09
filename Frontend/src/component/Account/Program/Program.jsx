@@ -113,6 +113,9 @@ const Program = () => {
           </tfoot>
         </table>
       </div>
+      <div className="button-container">
+        <button className="generate-plan-btn">Generate new plan</button>
+      </div>
     </div>
   );
 };

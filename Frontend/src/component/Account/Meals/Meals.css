@@ -73,6 +73,27 @@
   padding-top: 1.5rem;
 }
 
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.generate-meal-btn {
+  background-color: #ff8c00;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.generate-meal-btn:hover {
+  background-color: #ff7000;
+}
+
 @media (max-width: 768px) {
   .meals-container {
     padding: 1rem;
