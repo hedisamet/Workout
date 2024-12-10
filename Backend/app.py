@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
-from dotenv import load_dotenv
-from pymongo import MongoClient
-from datetime import datetime
 import json
+import requests
 import traceback
+from datetime import datetime
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -17,14 +17,33 @@ openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
 OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "DeploymentGPT35T")
 
 app = Flask(__name__)
-CORS(app)
 
-# MongoDB connection
-client = MongoClient(os.getenv("MONGODB_URI"))
-db = client['fitflow']
-workout_plans = db['workout_plans']
-meal_plans = db['meal_plans']
-users = db['users']
+# Configure CORS
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:3001"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
+
+# Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    response.headers.pop('Access-Control-Allow-Origin', None)
+    response.headers.pop('Access-Control-Allow-Headers', None)
+    response.headers.pop('Access-Control-Allow-Methods', None)
+    response.headers.pop('Access-Control-Allow-Credentials', None)
+    
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3001'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
+# IPFS Service URL
+IPFS_SERVICE_URL = 'http://localhost:3002'
 
 def get_standardized_goal(goal):
     goal_dict = {
@@ -143,21 +162,21 @@ def generate_single_day_meals(day_name, daily_calories, standardized_goal):
     }
 
     system_prompt = """You are a professional nutritionist creating precise meal plans. Follow these rules exactly:
-1. Return exactly 5 meals, one per line
-2. Each line must be in this exact format: MealType|Food with portion|Protein|Carbs|Fats
-3. Use only whole numbers for macros (protein, carbs, fats)
-4. Separate each field with a single pipe character (|)
-5. Do not include any other text or explanations
+    1. Return exactly 5 meals, one per line
+    2. Each line must be in this exact format: MealType|Food with portion|Protein|Carbs|Fats
+    3. Use only whole numbers for macros (protein, carbs, fats)
+    4. Separate each field with a single pipe character (|)
+    5. Do not include any other text or explanations
 
-Example format:
-Breakfast|Oatmeal with berries (1 cup)|12|45|6
-Snack|Greek yogurt with almonds|15|12|8
-Lunch|Grilled chicken with rice|35|40|12
-Snack|Protein shake with banana|20|25|5
-Dinner|Salmon with sweet potato|30|35|15"""
+    Example format:
+    Breakfast|Oatmeal with berries (1 cup)|12|45|6
+    Snack|Greek yogurt with almonds|15|12|8
+    Lunch|Grilled chicken with rice|35|40|12
+    Snack|Protein shake with banana|20|25|5
+    Dinner|Salmon with sweet potato|30|35|15"""
 
     user_prompt = f"""Create a meal plan for {standardized_goal} with {daily_calories} total calories.
-Remember: Return exactly 5 meals, one per line, in this format: MealType|Food with portion|Protein|Carbs|Fats"""
+    Remember: Return exactly 5 meals, one per line, in this format: MealType|Food with portion|Protein|Carbs|Fats"""
 
     try:
         print(f"Attempting to call OpenAI with deployment: {OPENAI_DEPLOYMENT_NAME}")
@@ -193,13 +212,13 @@ Remember: Return exactly 5 meals, one per line, in this format: MealType|Food wi
 def generate_meals_retry(day_name, daily_calories, standardized_goal, meal_times):
     """Simplified retry attempt for meal generation"""
     system_prompt = """You are a nutritionist. Follow this format exactly:
-Return exactly 5 meals, one per line:
-MealType|Food with portion|Protein|Carbs|Fats
-Use only whole numbers for macros."""
+    Return exactly 5 meals, one per line:
+    MealType|Food with portion|Protein|Carbs|Fats
+    Use only whole numbers for macros."""
 
     user_prompt = f"""Create a simple meal plan for {standardized_goal} with {daily_calories} calories.
-Return exactly 5 meals in this format (one per line):
-MealType|Food with portion|Protein|Carbs|Fats"""
+    Return exactly 5 meals in this format (one per line):
+    MealType|Food with portion|Protein|Carbs|Fats"""
 
     try:
         response = openai.ChatCompletion.create(
@@ -325,159 +344,164 @@ def get_time_slot(meal_type):
     }
     return time_slots.get(meal_type, "12:00 PM")
 
-@app.route('/api/generate-workout', methods=['POST'])
-def create_workout_plan():
+# IPFS proxy endpoints
+@app.route('/api/meals/ipfs/<hash>', methods=['GET'])
+def get_from_ipfs(hash):
     try:
-        user_data = request.json
-        print("Received user data:", user_data)
-        
-        # Generate workout plan using OpenAI
-        workout_plan = generate_workout_plan(user_data)
-        print("Generated workout plan:", workout_plan)
-        
-        # Update or insert workout plan
-        plan_data = {
-            'user_id': user_data['user_id'],
-            'plan': workout_plan,
-            'created_at': datetime.utcnow()
-        }
-        
-        # Try to update existing plan, if none exists it will insert a new one
-        result = workout_plans.update_one(
-            {'user_id': user_data['user_id']},
-            {'$set': plan_data},
-            upsert=True
-        )
-        
-        return jsonify({
-            'status': 'success',
-            'data': workout_plan,
-            'message': 'Workout plan updated successfully'
-        }), 200
-        
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        print("Error in create_workout_plan:", error_details)
+        response = requests.get(f'http://localhost:3002/api/meals/ipfs/{hash}')
+        return response.json(), response.status_code
+    except requests.RequestException as e:
         return jsonify({
             'status': 'error',
-            'message': str(e),
-            'details': error_details
+            'message': f'Failed to retrieve from IPFS: {str(e)}'
+        }), 500
+
+@app.route('/api/meals/ipfs', methods=['POST'])
+def upload_to_ipfs():
+    try:
+        response = requests.post('http://localhost:3002/api/meals/ipfs', json=request.json)
+        return response.json(), response.status_code
+    except requests.RequestException as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to upload to IPFS: {str(e)}'
         }), 500
 
 @app.route('/api/generate-meal', methods=['POST'])
 def create_meal_plan():
     try:
-        if not request.is_json:
-            return jsonify({
-                'status': 'error',
-                'message': 'Request must be JSON'
-            }), 400
-
-        user_data = request.get_json()
-        if not user_data or 'user_id' not in user_data:
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing user_id in request'
-            }), 400
-
-        print(f"Generating meal plan for user: {user_data['user_id']}")
+        data = request.get_json()
+        user_data = {
+            'user_id': data.get('user_id'),
+            'weight': data.get('weight', '70'),
+            'height': data.get('height', '170'),
+            'goal': data.get('goal', 'Health and Fitness')
+        }
         
-        try:
-            meal_plan = generate_meal_plan(user_data)
-            if not meal_plan:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Failed to generate meal plan'
-                }), 500
-                
-            # Update or insert in MongoDB
-            plan_data = {
-                'user_id': user_data['user_id'],
-                'plan': meal_plan,
-                'updated_at': datetime.utcnow()
-            }
-            
-            result = meal_plans.update_one(
-                {'user_id': user_data['user_id']},
-                {'$set': plan_data},
-                upsert=True
-            )
-            print(f"MongoDB update result - modified: {result.modified_count}, upserted_id: {result.upserted_id}")
-            
-            # Verify the save
-            saved_plan = meal_plans.find_one({'user_id': user_data['user_id']})
-            if not saved_plan:
-                raise Exception("Failed to verify plan was saved")
-            
-            return jsonify({
-                'status': 'success',
-                'data': meal_plan,
-                'message': 'Meal plan updated successfully'
-            }), 200
-            
-        except ValueError as ve:
-            print(f"Validation error: {str(ve)}")
-            return jsonify({
-                'status': 'error',
-                'message': str(ve)
-            }), 400
-            
-        except Exception as gen_error:
-            print(f"Error generating plan: {traceback.format_exc()}")
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to generate meal plan'
-            }), 500
-            
+        meal_plan = generate_meal_plan(user_data)
+        return jsonify({'status': 'success', 'data': meal_plan})
     except Exception as e:
-        print(f"Unexpected error: {traceback.format_exc()}")
+        print(f"Error generating meal plan: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/meals/accept', methods=['POST'])
+def accept_meal_plan():
+    try:
+        meal_plan = request.get_json().get('mealPlan')
+        if not meal_plan:
+            return jsonify({'status': 'error', 'message': 'No meal plan provided'}), 400
+
+        # Add metadata
+        meal_plan['acceptedAt'] = datetime.utcnow().isoformat()
+        
+        # Send to IPFS service
+        response = requests.post(f"{IPFS_SERVICE_URL}/api/ipfs/upload", json=meal_plan)
+        if response.status_code != 200:
+            raise Exception(f"Failed to upload to IPFS: {response.text}")
+            
+        ipfs_hash = response.json().get('hash')
         return jsonify({
-            'status': 'error',
-            'message': 'An unexpected error occurred'
-        }), 500
+            'status': 'success',
+            'ipfsHash': ipfs_hash,
+            'message': 'Meal plan saved to IPFS successfully'
+        })
+    except Exception as e:
+        print(f"Error saving to IPFS: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/api/meal-plans/<user_id>', methods=['GET'])
-def get_meal_plan(user_id):
+@app.route('/api/meals/ipfs/<hash>', methods=['GET'])
+def get_meal_plan_from_ipfs(hash):
     try:
-        meal_plans_collection = db['meal_plans']
-        meal_plan_doc = meal_plans_collection.find_one({"user_id": user_id})
-        
-        if meal_plan_doc:
-            return jsonify({
-                'status': 'success',
-                'plan': meal_plan_doc['plan']
-            })
-        else:
-            return jsonify({"status": "error", "message": "Meal plan not found"}), 404
+        response = requests.get(f"{IPFS_SERVICE_URL}/get/{hash}")
+        if response.status_code != 200:
+            raise Exception(f"Failed to retrieve from IPFS: {response.text}")
             
+        meal_plan = response.json().get('data')
+        return jsonify({
+            'status': 'success',
+            'data': meal_plan
+        })
     except Exception as e:
-        print(f"Error getting meal plan: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"Error retrieving from IPFS: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/api/workout-plans/<user_id>', methods=['GET'])
-def get_user_workout_plans(user_id):
+@app.route('/api/generate-workout', methods=['POST'])
+def create_workout_plan():
     try:
-        plan = workout_plans.find_one({'user_id': user_id})
-        if plan:
-            plan['_id'] = str(plan['_id'])
-            return jsonify(plan), 200
-        return jsonify({'message': 'No workout plan found'}), 404
+        data = request.get_json()
+        user_data = {
+            'user_id': data.get('user_id'),
+            'weight': data.get('weight', '70'),
+            'height': data.get('height', '170'),
+            'goal': data.get('goal', 'Health and Fitness'),
+            'Sessions_per_Week': data.get('Sessions_per_Week', 3)
+        }
+        
+        workout_plan = generate_workout_plan(user_data)
+        return jsonify({'status': 'success', 'data': workout_plan})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error generating workout plan: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/account/<user_id>', methods=['GET'])
-def get_account(user_id):
+@app.route('/api/program/accept', methods=['POST'])
+def accept_workout_plan():
     try:
-        # Fetch account details from the database
-        user_account = users.find_one({'_id': user_id})
-        if user_account:
-            return jsonify({'status': 'success', 'account': user_account})
-        else:
-            return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+        workout_plan = request.get_json().get('workoutPlan')
+        print("Received workout plan:", workout_plan)  # Debug log
+        if not workout_plan:
+            return jsonify({'status': 'error', 'message': 'No workout plan provided'}), 400
+
+        # Parse the workout plan if it's a string
+        if isinstance(workout_plan, str):
+            try:
+                workout_plan = json.loads(workout_plan)
+            except json.JSONDecodeError as e:
+                return jsonify({'status': 'error', 'message': f'Invalid workout plan format: {str(e)}'}), 400
+
+        # Add metadata
+        workout_plan['acceptedAt'] = datetime.utcnow().isoformat()
+        
+        # Send to IPFS service
+        print("Sending to IPFS:", workout_plan)  # Debug log
+        response = requests.post(f"{IPFS_SERVICE_URL}/api/meals/ipfs", json=workout_plan)
+        print("IPFS response:", response.text)  # Debug log
+        if response.status_code != 200:
+            raise Exception(f"Failed to upload to IPFS: {response.text}")
+            
+        ipfs_hash = response.json().get('hash')
+        return jsonify({
+            'status': 'success',
+            'ipfsHash': ipfs_hash,
+            'message': 'Workout plan saved to IPFS successfully'
+        })
     except Exception as e:
-        print(f"Error fetching account: {str(e)}")
+        print(f"Error saving to IPFS: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/program/ipfs/<hash>', methods=['GET'])
+def get_workout_plan_from_ipfs(hash):
+    try:
+        print(f"Fetching workout plan with hash: {hash}")  # Debug log
+        response = requests.get(f"{IPFS_SERVICE_URL}/api/meals/ipfs/{hash}")
+        print("IPFS response:", response.text)  # Debug log
+        if response.status_code != 200:
+            raise Exception(f"Failed to retrieve from IPFS: {response.text}")
+            
+        workout_plan = response.json().get('data')
+        print("Retrieved workout plan:", workout_plan)  # Debug log
+        return jsonify({
+            'status': 'success',
+            'data': workout_plan
+        })
+    except Exception as e:
+        print(f"Error retrieving from IPFS: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    try:
+        print("Starting Flask app on port 5002...")
+        app.run(debug=True, port=5002, host='localhost', threaded=True)
+    except Exception as e:
+        print(f"Error starting Flask app: {str(e)}")

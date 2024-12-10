@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Program.css';
 import Loader from '../../shared/Loader/Loader';
+import { API_ENDPOINTS, axiosConfig } from '../../../config/api';
 
 const Program = () => {
   const [program, setProgram] = useState(null);
@@ -10,6 +11,8 @@ const Program = () => {
   const [weekRange, setWeekRange] = useState('');
   const [totalCalories, setTotalCalories] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [ipfsHash, setIpfsHash] = useState(null);
+  const [isAccepted, setIsAccepted] = useState(false);
 
   const calculateWeekRange = () => {
     const today = new Date();
@@ -27,7 +30,10 @@ const Program = () => {
 
   const fetchProgram = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/workout-plans/${userId}`);
+      const response = await axios.get(
+        API_ENDPOINTS.WORKOUT.GET_PLAN(userId),
+        axiosConfig
+      );
       if (response.data && response.data.length > 0) {
         // Get the most recent plan
         const latestPlan = response.data[response.data.length - 1];
@@ -50,20 +56,6 @@ const Program = () => {
     }
   };
 
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      fetchProgram(userId);
-    } else {
-      setError('User not found');
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    setWeekRange(calculateWeekRange());
-  }, []);
-
   const generateNewPlan = async () => {
     try {
       setGenerating(true);
@@ -85,13 +77,17 @@ const Program = () => {
         'Weight Loss': 'Weight Loss'
       };
 
-      const response = await axios.post('http://localhost:5001/api/generate-workout', {
-        user_id: userId,
-        weight: userData.weight || 70,
-        height: userData.height || 175,
-        Sessions_per_Week: userData.numberOfSession || 3,
-        goal: goalMapping[userData.objectif] || 'Health Fitness'
-      });
+      const response = await axios.post(
+        API_ENDPOINTS.WORKOUT.GENERATE,
+        {
+          user_id: userId,
+          weight: userData.weight || 70,
+          height: userData.height || 175,
+          Sessions_per_Week: userData.numberOfSession || 3,
+          goal: goalMapping[userData.objectif] || 'Health Fitness'
+        },
+        axiosConfig
+      );
 
       if (response.data && response.data.status === 'success') {
         const workoutPlan = typeof response.data.data === 'string' 
@@ -115,108 +111,185 @@ const Program = () => {
     }
   };
 
-  if (loading) {
-    return <Loader />;
-  }
+  const fetchAcceptedProgram = async (hash) => {
+    try {
+      const response = await axios.get(`${API_ENDPOINTS.WORKOUT.GET_IPFS}/${hash}`);
+      if (response.data && response.data.status === 'success') {
+        const workoutPlan = response.data.data;
+        setProgram(workoutPlan);
+        
+        // Calculate total calories
+        const total = workoutPlan.workoutDays.reduce(
+          (sum, day) => sum + (parseInt(day.calories) || 0),
+          0
+        );
+        setTotalCalories(total);
+        setLoading(false);
+      } else {
+        throw new Error('Failed to fetch program data');
+      }
+    } catch (error) {
+      console.error('Error fetching accepted program:', error);
+      setError('Failed to fetch accepted program');
+      setLoading(false);
+    }
+  };
 
-  if (error) {
-    return (
-      <div className="program-container">
-        <div className="error">{error}</div>
-        <div className="button-container">
-          <button 
-            className="generate-plan-btn" 
-            onClick={generateNewPlan}
-            disabled={generating}
-          >
-            {generating ? 'Generating...' : 'Generate new plan'}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Check if there's an accepted program for today
+    const savedHash = localStorage.getItem('todaysProgramHash');
+    const savedDate = localStorage.getItem('programAcceptedDate');
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (savedHash && savedDate === today) {
+      setIpfsHash(savedHash);
+      setIsAccepted(true);
+      fetchAcceptedProgram(savedHash);
+    } else {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        fetchProgram(userId);
+      } else {
+        setError('User not found');
+        setLoading(false);
+      }
+    }
+  }, []);
 
-  if (!program || !program.workoutDays || program.workoutDays.length === 0) {
-    return (
-      <div className="program-container">
-        <div className="empty">No workout program found</div>
-        <div className="button-container">
-          <button 
-            className="generate-plan-btn" 
-            onClick={generateNewPlan}
-            disabled={generating}
-          >
-            {generating ? 'Generating...' : 'Generate new plan'}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const acceptProgram = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        API_ENDPOINTS.WORKOUT.ACCEPT,
+        { workoutPlan: program },
+        axiosConfig
+      );
+      
+      const { ipfsHash: hash } = response.data;
+      setIpfsHash(hash);
+      setIsAccepted(true);
+      
+      // Save for today
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem('todaysProgramHash', hash);
+      localStorage.setItem('programAcceptedDate', today);
+      
+      // Fetch the accepted program from IPFS
+      await fetchAcceptedProgram(hash);
+      
+    } catch (error) {
+      console.error('Error accepting program:', error);
+      setError('Failed to save program to IPFS');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setWeekRange(calculateWeekRange());
+  }, []);
 
   return (
     <div className="program-container">
       <h2>Weekly Workout Plan</h2>
       <div className="week-range">{weekRange}</div>
-      <div className="program-table-container">
-        <table className="program-table">
-          <thead>
-            <tr>
-              <th>DAY</th>
-              <th>WORKOUT FOCUS</th>
-              <th>EXERCISES</th>
-              <th>SETS/REPS</th>
-              <th>REST</th>
-              <th>CALORIES</th>
-            </tr>
-          </thead>
-          <tbody>
-            {program.workoutDays.map((workout, index) => (
-              <tr key={index}>
-                <td>{workout.dayName}</td>
-                <td>{workout.workoutFocus}</td>
-                <td>
-                  {workout.exercises.map((exercise, exIndex) => (
-                    <div key={exIndex} className="exercise-item">
-                      {exercise.name}
-                    </div>
-                  ))}
-                </td>
-                <td>
-                  {workout.exercises.map((exercise, exIndex) => (
-                    <div key={exIndex} className="exercise-item">
-                      {exercise.sets}×{exercise.reps}
-                      {exercise.name.toLowerCase().includes('plank') ? ' seconds' : ''}
-                    </div>
-                  ))}
-                </td>
-                <td>
-                  {workout.exercises.map((exercise, exIndex) => (
-                    <div key={exIndex} className="exercise-item">
-                      {exercise.restDuration}s
-                    </div>
-                  ))}
-                </td>
-                <td>{workout.calories}</td>
+      
+      {error && <div className="error">{error}</div>}
+      
+      {!loading && program && !isAccepted && (
+        <div className="program-actions">
+          <button 
+            onClick={generateNewPlan}
+            className="generate-plan-btn"
+            disabled={generating || isAccepted}
+          >
+            {generating ? 'Generating...' : 'Generate Another Plan'}
+          </button>
+          <button 
+            onClick={acceptProgram}
+            className="accept-button"
+            disabled={loading}
+          >
+            Accept This Plan
+          </button>
+        </div>
+      )}
+
+      {ipfsHash && (
+        <div className="ipfs-info">
+          <p>Program saved on IPFS</p>
+          <small>IPFS Hash: {ipfsHash}</small>
+        </div>
+      )}
+
+      {loading ? (
+        <Loader />
+      ) : program && program.workoutDays ? (
+        <div className="program-table-container">
+          <table className="program-table">
+            <thead>
+              <tr>
+                <th>DAY</th>
+                <th>WORKOUT FOCUS</th>
+                <th>EXERCISES</th>
+                <th>SETS/REPS</th>
+                <th>REST</th>
+                <th>CALORIES</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan="5" className="total-calories">Total Weekly Calories</td>
-              <td className="total-calories-value">{totalCalories}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <div className="button-container">
-        <button 
-          className="generate-plan-btn" 
-          onClick={generateNewPlan}
-          disabled={generating}
-        >
-          {generating ? 'Generating...' : 'Generate new plan'}
-        </button>
-      </div>
+            </thead>
+            <tbody>
+              {program.workoutDays.map((workout, index) => (
+                <tr key={index}>
+                  <td>{workout.dayName}</td>
+                  <td>{workout.workoutFocus}</td>
+                  <td>
+                    {workout.exercises.map((exercise, exIndex) => (
+                      <div key={exIndex} className="exercise-item">
+                        {exercise.name}
+                      </div>
+                    ))}
+                  </td>
+                  <td>
+                    {workout.exercises.map((exercise, exIndex) => (
+                      <div key={exIndex} className="exercise-item">
+                        {exercise.sets}×{exercise.reps}
+                        {exercise.name.toLowerCase().includes('plank') ? ' seconds' : ''}
+                      </div>
+                    ))}
+                  </td>
+                  <td>
+                    {workout.exercises.map((exercise, exIndex) => (
+                      <div key={exIndex} className="exercise-item">
+                        {exercise.restDuration}s
+                      </div>
+                    ))}
+                  </td>
+                  <td>{workout.calories}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan="5" className="total-calories">Total Weekly Calories</td>
+                <td className="total-calories-value">{totalCalories}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      ) : (
+        <div className="empty">
+          <p>No workout program found</p>
+          {!isAccepted && (
+            <button 
+              className="generate-plan-btn" 
+              onClick={generateNewPlan}
+              disabled={generating}
+            >
+              {generating ? 'Generating...' : 'Generate New Plan'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

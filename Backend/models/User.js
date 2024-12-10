@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -40,10 +40,6 @@ const userSchema = new mongoose.Schema({
     enum: ['Male', 'Female'],
     required: true
   },
-  assignedProgram: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Program'
-  },
   assignedMealPlan: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MealPlan'
@@ -52,4 +48,4 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);

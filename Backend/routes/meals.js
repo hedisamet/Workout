@@ -1,7 +1,9 @@
-const express = require('express');
+import express from 'express';
+import User from '../models/User.js';
+import MealPlan from '../models/MealPlan.js';
+import { uploadToIPFS, getFromIPFS } from '../services/ipfsService.js';
+
 const router = express.Router();
-const User = require('../models/User');
-const MealPlan = require('../models/MealPlan');
 
 // Get user's meal plan
 router.get('/:userId', async (req, res) => {
@@ -104,4 +106,37 @@ router.post('/update/:userId', async (req, res) => {
   }
 });
 
-module.exports = router;
+// Save meal plan to IPFS
+router.post('/accept', async (req, res) => {
+  try {
+    const { mealPlan } = req.body;
+    if (!mealPlan) {
+      return res.status(400).json({ status: 'error', message: 'Meal plan is required' });
+    }
+
+    // Upload meal plan to IPFS
+    const ipfsHash = await uploadToIPFS(mealPlan);
+    res.json({ status: 'success', ipfsHash, message: 'Meal plan saved to IPFS successfully' });
+  } catch (error) {
+    console.error('Error saving meal plan to IPFS:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to save meal plan to IPFS' });
+  }
+});
+
+// Retrieve meal plan from IPFS
+router.get('/ipfs/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    if (!hash) {
+      return res.status(400).json({ status: 'error', message: 'IPFS hash is required' });
+    }
+
+    const mealPlan = await getFromIPFS(hash);
+    res.json({ status: 'success', data: mealPlan });
+  } catch (error) {
+    console.error('Error retrieving meal plan from IPFS:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to retrieve meal plan from IPFS' });
+  }
+});
+
+export default router;

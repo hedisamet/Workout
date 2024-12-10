@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const mealSchema = new mongoose.Schema({
   name: {
@@ -25,7 +25,15 @@ const mealPlanSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  meals: [mealSchema]
+  meals: [mealSchema],
+  ipfsHash: {
+    type: String,
+    default: null
+  },
+  lastAcceptedDate: {
+    type: Date,
+    default: null
+  }
 }, {
   timestamps: true
 });
@@ -35,4 +43,4 @@ mealPlanSchema.virtual('totalDailyCalories').get(function() {
   return this.meals.reduce((total, meal) => total + meal.calories, 0);
 });
 
-module.exports = mongoose.model('MealPlan', mealPlanSchema);
+export default mongoose.model('MealPlan', mealPlanSchema);
